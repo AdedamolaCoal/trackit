@@ -1,0 +1,54 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: trackit-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: trackit
+      POSTGRES_PASSWORD: trackit_password
+      POSTGRES_DB: trackit_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trackit -d trackit_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - trackit-network
+
+  # trackit API
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: trackit-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DB_HOST: trackit-postgres
+      DB_PORT: 5432
+    ports:
+      - "${APP_PORT:-8080}:8888"
+    volumes:
+      - .:/app
+    depends_on:
+      - postgres
+    command: air -c .air.toml
+    networks:
+      - trackit-network
+
+volumes:
+  postgres_data:
+    name: trackit_db_data
+
+networks:
+  trackit-network:
+    driver: bridge
+    name: trackit-network
