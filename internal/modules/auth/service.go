@@ -15,12 +15,18 @@ import (
 )
 
 type Service struct {
-	cfg  *config.Config
-	repo *Repository
+	cfg             *config.Config
+	repo            *Repository
+	categoryService interface {
+		SeedDefaultCategories(ctx context.Context, userId uint) error
+	}
 }
 
-func NewService(cfg *config.Config, repo *Repository) *Service {
-	return &Service{cfg: cfg, repo: repo}
+// NewService Constructor implementation approach to seed data
+func NewService(cfg *config.Config, repo *Repository, categoryService interface {
+	SeedDefaultCategories(ctx context.Context, userId uint) error
+}) *Service {
+	return &Service{cfg: cfg, repo: repo, categoryService: categoryService}
 }
 
 // Register REGISTER

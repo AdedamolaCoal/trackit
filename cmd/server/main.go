@@ -1,20 +1,53 @@
 package main
 
 import (
+	"expense-tracker/internal/config"
+	"expense-tracker/internal/database"
+	"expense-tracker/internal/modules/auth"
+	"expense-tracker/internal/modules/categories"
+	"expense-tracker/internal/shared/middleware"
 	"fmt"
+	"log"
+	"net/http"
 )
 
-//TIP <p>To run your code, right-click the code and select <b>Run</b>.</p> <p>Alternatively, click
-// the <icon src="AllIcons.Actions.Execute"/> icon in the gutter and select the <b>Run</b> menu item from here.</p>
 func main() {
-	//TIP <p>Press <shortcut actionId="ShowIntentionActions"/> when your caret is at the underlined text
-	// to see how GoLand suggests fixing the warning.</p><p>Alternatively, if available, click the lightbulb to view possible fixes.</p>
-	s := "gopher"
-	fmt.Println("Hello and welcome, %s!", s)
+	cfg := config.Load()
+	cfg.Validate()
 
-	for i := 1; i <= 5; i++ {
-		//TIP <p>To start your debugging session, right-click your code in the editor and select the Debug option.</p> <p>We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint
-		// for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>.</p>
-		fmt.Println("i =", 100/i)
+	db := database.Connect(cfg)
+
+	database.Migrate(db.DB, &auth.User{}, &auth.RefreshToken{}, &categories.Category{})
+
+	mux := http.NewServeMux()
+
+	// Module Wiring
+	// Auth
+	authRepo := auth.NewRepository(db.DB)
+	authSrv := auth.NewService(cfg, authRepo)
+	authHandler := auth.NewHandler(authSrv)
+	authMiddleware := middleware.NewAuthMiddleware(cfg)
+
+	// Categories
+	categoryRepo := categories.NewRepository(db.DB)
+	categorySrv := categories.NewService(categoryRepo)
+	categoryHandler := categories.NewHandler(categorySrv)
+
+	//	Routes
+	auth.RegisterRoutes(mux, authHandler, authMiddleware)
+	categories.RegisterRoutes(mux, categoryHandler, authMiddleware)
+
+	//	Middleware Stack - outermost runs first
+	stack := middleware.Recover(
+		middleware.Logger(
+			middleware.CORS(mux),
+		),
+	)
+
+	addr := fmt.Sprintf(":%s", cfg.App.Port)
+	log.Printf("Server starting on %s: (env: %s)", addr, cfg.App.Env)
+
+	if err := http.ListenAndServe(addr, stack); err != nil {
+		log.Fatalf("Server failed: %v", err)
 	}
 }

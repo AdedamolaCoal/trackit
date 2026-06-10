@@ -1,5 +1,5 @@
 # Stage 1: Development (hot-reload via Air)
-FROM golang:1.25-alpine AS development
+FROM golang:1.26-alpine AS development
 
 RUN apk add --no-cache git curl
 RUN go install github.com/air-verse/air@latest
@@ -16,7 +16,7 @@ CMD ["air", "-c", ".air.toml"]
 
 
 # Stage 2: Builder
-FROM golang:1.25-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 RUN apk add --no-cache git
 

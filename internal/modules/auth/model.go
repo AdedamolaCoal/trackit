@@ -23,7 +23,7 @@ type RefreshToken struct {
 	Token     string    `gorm:"type:varchar(512);uniqueIndex;not null"`
 	ExpiredAt time.Time `gorm:"expiresAt;not null"`
 	CreatedAt time.Time
-	User      User `gorm:"foreignKey;UserID"`
+	User      User `gorm:"foreignKey:UserID"`
 }
 
 //func (RefreshToken) IsExpired() bool {
